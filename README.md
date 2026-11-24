@@ -1,6 +1,10 @@
 # ⚡ ChatMind | Live Chat 1-Click Smart Assist & History Backup
 
 <p align="center">
+  <img src="extension/icons/logo.png" alt="ChatMind Logo" width="160" />
+</p>
+
+<p align="center">
   <strong>Intelligent Agent-Assist Extension & Chat-History Collector for High-Velocity Live Chat Operations.</strong>
 </p>
 
@@ -34,9 +38,9 @@ d:\chatmind\
 │   ├── content.js              # In-page DOM observer & smart reply engine
 │   ├── content.css             # Floating assistant UI styling
 │   ├── knowledge_base.js       # Standardized response rules & templates
-│   ├── popup.html              # Extension popup manager
+│   ├── popup.html              # Extension popup manager with brand logo
 │   ├── popup.js                # Stats & JSON backup exporter
-│   └── icons/                  # Extension icons
+│   └── icons/                  # High-res logo & extension icons (16, 32, 48, 128)
 ├── .gitignore                  # Security & credentials exclusion
 └── README.md                   # Project documentation
 ```
@@ -47,13 +51,13 @@ d:\chatmind\
 
 1. Open Google Chrome and navigate to `chrome://extensions`.
 2. Toggle **Developer mode** (top right) to **ON**.
-3. Click **Load unpacked** (top left).
+3. Click **Load unpacked** (top left) or click the **Update / Reload** icon if already loaded.
 4. Select the `extension/` folder inside this repository:
    ```text
    d:\chatmind\extension
    ```
 5. Navigate to your live chat portal (e.g., `https://skgaming21.as6868.com/#chatlist`) and refresh the page.
-6. The **ChatMind Active** status widget will appear at the bottom right. When viewing any chatroom, the 1-click reply bar will appear directly above the typing box.
+6. The **ChatMind Active** status widget will appear at the bottom right with your official logo. When viewing any chatroom, the 1-click reply bar will appear directly above the typing box.
 
 ---
 

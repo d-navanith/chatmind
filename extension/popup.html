@@ -19,13 +19,20 @@
       padding-bottom: 10px;
       margin-bottom: 12px;
     }
+    .title-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+    }
     .title {
       font-size: 14px;
       font-weight: 700;
       color: #60a5fa;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
     .badge {
       background: #10b981;
@@ -88,7 +95,10 @@
 </head>
 <body>
   <div class="header">
-    <div class="title">⚡ ChatMind Assist</div>
+    <div class="title-box">
+      <img src="icons/icon48.png" alt="ChatMind Logo" class="logo-img">
+      <div class="title">ChatMind</div>
+    </div>
     <div class="badge">ACTIVE</div>
   </div>
 
@@ -103,7 +113,7 @@
 
   <div class="footer">
     Works on skgaming21 & as6868 backends<br>
-    Version 1.0.0 • 1-Click Smart Assist
+    Version 1.0.1 • 1-Click Smart Assist
   </div>
 
   <script src="popup.js"></script>
