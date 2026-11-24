@@ -34,12 +34,12 @@
 
 ## 🌐 Supported Platforms
 
-| Platform | Logo | Status | Supported Features |
+| Platform | Badge | Status | Supported Features |
 | :--- | :---: | :---: | :--- |
-| **Google Chrome / Chromium** | <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Chrome.svg" width="32" height="32" /> | **Full Support** | Native Manifest V3 extension with 1-click typing. |
-| **Telegram Web (Web A & K)** | <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Telegram.svg" width="32" height="32" /> | **Full Support** | Smart reply floating panel above composer, contenteditable insertion. |
-| **Live Chat Backends (`as6868.com`)** | <img src="https://img.icons8.com/color/48/chat--v1.png" width="32" height="32" /> | **Full Support** | `#chatlist`, `#chatroom`, receipt detection, template drawer. |
-| **Microsoft Edge & Brave** | <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Brave.svg" width="32" height="32" /> | **Full Support** | Unpacked extension loadable on all Chromium engines. |
+| **Google Chrome / Chromium** | ![Google Chrome](https://img.shields.io/badge/Google_Chrome-4285F4?style=flat-square&logo=googlechrome&logoColor=white) | **Full Support** | Native Manifest V3 extension with 1-click typing. |
+| **Telegram Web (Web A & K)** | ![Telegram](https://img.shields.io/badge/Telegram_Web-26A5E4?style=flat-square&logo=telegram&logoColor=white) | **Full Support** | Smart reply floating panel above composer, contenteditable insertion. |
+| **Live Chat Backends (`as6868.com`)** | ![Live Chat](https://img.shields.io/badge/as6868_Portals-10B981?style=flat-square&logo=livechat&logoColor=white) | **Full Support** | `#chatlist`, `#chatroom`, receipt detection, template drawer. |
+| **Microsoft Edge & Brave** | ![Edge & Brave](https://img.shields.io/badge/Edge_%26_Brave-0078D7?style=flat-square&logo=microsoftedge&logoColor=white) | **Full Support** | Unpacked extension loadable on all Chromium engines. |
 
 ---
 
@@ -73,6 +73,8 @@ d:\chatmind\
 │       ├── icon32.png
 │       ├── icon48.png
 │       └── icon128.png
+├── assets/
+│   └── logos/                  # Offline vector badges & assets
 ├── .gitignore                  # Security & credentials exclusion
 └── README.md                   # Project documentation
 ```
