@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #111827;
+      color: #f3f4f6;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #374151;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      background: #10b981;
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+    .card {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .stat-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .btn {
+      width: 100%;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: background 0.15s;
+    }
+    .btn:hover {
+      background: #1d4ed8;
+    }
+    .btn-secondary {
+      background: #374151;
+      color: #d1d5db;
+    }
+    .btn-secondary:hover {
+      background: #4b5563;
+      color: #fff;
+    }
+    .footer {
+      font-size: 11px;
+      color: #6b7280;
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">⚡ ChatMind Assist</div>
+    <div class="badge">ACTIVE</div>
+  </div>
+
+  <div class="card">
+    <div class="stat-label">Backed Up Chats</div>
+    <div class="stat-val" id="chat-count">Loading...</div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Auto-recorded from active chats</div>
+  </div>
+
+  <button class="btn" id="export-btn">📥 Export Chat History (JSON)</button>
+  <button class="btn btn-secondary" id="clear-btn">🗑️ Clear Local History</button>
+
+  <div class="footer">
+    Works on skgaming21 & as6868 backends<br>
+    Version 1.0.0 • 1-Click Smart Assist
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
