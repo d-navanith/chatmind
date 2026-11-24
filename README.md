@@ -23,7 +23,7 @@
 
 ## 🚀 Overview
 
-**ChatMind** is an enterprise customer support intelligence platform engineered for live chat management systems (such as `skgaming21.as6868.com`, multi-brand casino backends) and **Telegram Web**. It dramatically accelerates support response velocity by:
+**ChatMind** is an enterprise customer support intelligence platform engineered for live chat management backends, multi-brand customer service portals, and **Telegram Web**. It dramatically accelerates support response velocity by:
 
 1. **Auto-identifying customer problems** in real time.
 2. **Offering 1-click verified responses** directly from the official knowledge base.
@@ -38,7 +38,7 @@
 | :--- | :---: | :---: | :--- |
 | **Google Chrome / Chromium** | ![Google Chrome](https://img.shields.io/badge/Google_Chrome-4285F4?style=flat-square&logo=googlechrome&logoColor=white) | **Full Support** | Native Manifest V3 extension with 1-click typing. |
 | **Telegram Web (Web A & K)** | ![Telegram](https://img.shields.io/badge/Telegram_Web-26A5E4?style=flat-square&logo=telegram&logoColor=white) | **Full Support** | Smart reply floating panel above composer, contenteditable insertion. |
-| **Live Chat Backends (`as6868.com`)** | ![Live Chat](https://img.shields.io/badge/as6868_Portals-10B981?style=flat-square&logo=livechat&logoColor=white) | **Full Support** | `#chatlist`, `#chatroom`, receipt detection, template drawer. |
+| **Enterprise Live Chat Portals** | ![Live Chat](https://img.shields.io/badge/Live_Chat-10B981?style=flat-square&logo=livechat&logoColor=white) | **Full Support** | Real-time chat threads, receipt detection, searchable template drawer. |
 | **Microsoft Edge & Brave** | ![Edge & Brave](https://img.shields.io/badge/Edge_%26_Brave-0078D7?style=flat-square&logo=microsoftedge&logoColor=white) | **Full Support** | Unpacked extension loadable on all Chromium engines. |
 
 ---
@@ -47,9 +47,9 @@
 
 - **⚡ 1-Click Smart Reply**: Reads client messages in real-time, matches intent against standard response rules (deposits, withdrawals, streaks, PayID, KYC, bonuses), and types the full message into the input box with a single click.
 - **📷 Instant Receipt & Slip Detection**: When a client sends a screenshot or payment receipt, ChatMind alerts the agent with an orange badge and provides instant 1-click verification choices (`RCV`, `NO RCV`, `Already Claimed`, `Not Our Bank`).
-- **🔍 Quick Knowledge Drawer**: Fast searchable drawer containing categorized response templates and live maintenance download links (Mega888, 918Kiss, Pussy888, Mario Club).
+- **🔍 Quick Knowledge Drawer**: Fast searchable drawer containing categorized response templates and live maintenance download links.
 - **💾 Auto Chat-History Backup**: Automatically stores conversation records, questions, and replies into local client storage (IndexedDB), with 1-click JSON export for offline data analysis and AI model training.
-- **🌐 Universal Architecture**: Operates across all brand portals sharing the same admin architecture without per-site code modifications.
+- **🌐 Universal Architecture**: Operates across all brand portals sharing common live chat architectures without per-site code modifications.
 
 ---
 
@@ -90,8 +90,8 @@ d:\chatmind\
    ```text
    d:\chatmind\extension
    ```
-5. Navigate to your live chat portal (e.g., `https://skgaming21.as6868.com/#chatlist`) or **[Telegram Web](https://web.telegram.org)** and refresh the page.
-6. The **ChatMind Active** status widget will appear at the bottom right. When viewing any chatroom, the 1-click reply bar will appear directly above the typing box.
+5. Navigate to your customer support portal or **[Telegram Web](https://web.telegram.org)** and refresh the page.
+6. The **ChatMind Active** status widget will appear at the bottom right. When viewing any active chat, the 1-click reply bar will appear directly above the typing box.
 
 ---
 
