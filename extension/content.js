@@ -1,8 +1,11 @@
 // ChatMind Smart Reply & Auto-History Logger
-// Injected into live chat backends (skgaming21, as6868.com, etc.)
+// Compatible with:
+// 1. Casino / Gaming backends (skgaming21, as6868.com, etc.)
+// 2. Telegram Web (web.telegram.org/a/ and web.telegram.org/k/)
 
 (function () {
-  console.log("[ChatMind] Live Chat Smart Assist initialized.");
+  const isTelegram = window.location.hostname.includes("telegram.org");
+  console.log(`[ChatMind] Smart Assist initialized on ${isTelegram ? 'Telegram Web' : window.location.hostname}.`);
 
   // --- 1. LOCAL DATABASE (IndexedDB) FOR CHAT HISTORY BACKUP ---
   const DB_NAME = "ChatMindDB";
@@ -82,7 +85,6 @@
         }
         if (catScore > 0) {
           detectedCategory = cat.name;
-          // Sort templates in category by tag relevance
           matches = cat.templates.slice(0, 4);
           break;
         }
@@ -106,27 +108,51 @@
     return { category: detectedCategory, hasAttachment: false, suggestions: matches };
   }
 
-  // --- 3. 1-CLICK TYPING INTO THE INPUT BOX ---
+  // --- 3. UNIVERSAL 1-CLICK TYPING (Supports contenteditable & textarea) ---
   function insertTemplateText(text) {
-    const textarea = document.querySelector("#chatroom textarea") || document.querySelector("textarea");
-    if (!textarea) {
-      alert("Chat textarea not found!");
+    // 1. Try Telegram Web input (contenteditable div)
+    if (isTelegram) {
+      const tgInput = document.querySelector(
+        '#editable-message-text, .input-message-input, div.input-field-input[contenteditable="true"], div[contenteditable="true"]'
+      );
+      if (tgInput) {
+        tgInput.focus();
+        // Select all text in contenteditable
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(tgInput);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Execute insertText command so Telegram's internal draft state triggers
+        if (!document.execCommand("insertText", false, text)) {
+          tgInput.innerText = text;
+        }
+
+        tgInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        tgInput.dispatchEvent(new Event("change", { bubbles: true }));
+        highlightFeedback();
+        return;
+      }
+    }
+
+    // 2. Try Casino / Standard Textarea
+    const textarea = document.querySelector("#chatroom textarea, textarea");
+    if (textarea) {
+      textarea.value = text;
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.dispatchEvent(new Event("change", { bubbles: true }));
+      textarea.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Shift" }));
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+      highlightFeedback();
       return;
     }
 
-    // Fill the text value
-    textarea.value = text;
+    alert("Chat input box not found!");
+  }
 
-    // Trigger input and change events so Backbone / SPA registers the typing
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    textarea.dispatchEvent(new Event("change", { bubbles: true }));
-    textarea.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Shift" }));
-
-    // Focus and scroll to end
-    textarea.focus();
-    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
-
-    // Provide immediate visual feedback
+  function highlightFeedback() {
     const container = document.getElementById("chatmind-container");
     if (container) {
       container.style.borderColor = "#10b981";
@@ -134,19 +160,74 @@
     }
   }
 
-  // --- 4. INJECT ASSISTANT UI INTO CHATROOM ---
-  let lastProcessedMsgId = null;
+  // --- 4. TELEGRAM WEB ASSISTANT RENDERER ---
+  let lastProcessedTgMsg = null;
 
-  function renderAssistantUI() {
+  function renderTelegramAssistantUI() {
+    // Look for Telegram composer/footer container
+    const composer = document.querySelector(
+      '.middle-column-footer, .chat-input, .input-message-container, .composer-wrapper'
+    );
+    if (!composer) return;
+
+    // Find incoming messages in the active chat
+    const incomingMessages = document.querySelectorAll(
+      '.Message.incoming, .bubble.is-in, .message-list-item .incoming, .message.is-in'
+    );
+    const lastMsgEl = incomingMessages.length > 0 ? incomingMessages[incomingMessages.length - 1] : null;
+
+    let customerText = "";
+    let hasAttachment = false;
+
+    if (lastMsgEl) {
+      const textEl = lastMsgEl.querySelector('.text-content, .message, .translatable-message');
+      customerText = textEl ? textEl.innerText.trim() : lastMsgEl.innerText.trim();
+      hasAttachment = lastMsgEl.querySelector('img, .media-photo, .media-container, .Album') !== null;
+    }
+
+    const msgFingerprint = (lastMsgEl ? lastMsgEl.innerText.slice(0, 100) : "") + (hasAttachment ? "_att" : "");
+    let container = document.getElementById("chatmind-container");
+
+    if (container && lastProcessedTgMsg === msgFingerprint) {
+      return; // Already rendered for this message
+    }
+    lastProcessedTgMsg = msgFingerprint;
+
+    const analysis = analyzeInquiry(customerText, hasAttachment);
+
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "chatmind-container";
+      composer.parentNode.insertBefore(container, composer);
+    }
+
+    buildAssistantHTML(container, analysis);
+
+    // Save to local database
+    if (lastMsgEl && customerText) {
+      const chatTitle = document.querySelector('.chat-info .title, .top .peer-title, .user-title')?.innerText || "Telegram Client";
+      saveChatLog({
+        userId: chatTitle,
+        userName: chatTitle,
+        customerText: customerText,
+        hasAttachment: hasAttachment,
+        detectedCategory: analysis.category,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  // --- 5. CASINO BACKEND ASSISTANT RENDERER ---
+  let lastProcessedCasinoMsg = null;
+
+  function renderCasinoAssistantUI() {
     const chatroom = document.getElementById("chatroom");
     if (!chatroom) return;
 
-    // Check if we are already rendered inside this chatroom
     let container = document.getElementById("chatmind-container");
     const chatTools = chatroom.querySelector(".chat-tools") || chatroom.querySelector("textarea")?.parentElement;
     if (!chatTools) return;
 
-    // Inspect the chat thread to find latest customer message
     const messages = chatroom.querySelectorAll(".message.customer");
     const lastMsgEl = messages.length > 0 ? messages[messages.length - 1] : null;
 
@@ -159,24 +240,38 @@
       hasAttachment = lastMsgEl.querySelector("img") !== null || customerText.includes(".jpg") || customerText.includes(".png");
     }
 
-    // Unique fingerprint for this customer message
     const msgFingerprint = (lastMsgEl ? lastMsgEl.innerText : "") + (hasAttachment ? "_att" : "");
-    if (container && lastProcessedMsgId === msgFingerprint) {
-      return; // Already up to date
+    if (container && lastProcessedCasinoMsg === msgFingerprint) {
+      return;
     }
-    lastProcessedMsgId = msgFingerprint;
+    lastProcessedCasinoMsg = msgFingerprint;
 
-    // Analyze intent
     const analysis = analyzeInquiry(customerText, hasAttachment);
 
-    // Build or update container
     if (!container) {
       container = document.createElement("div");
       container.id = "chatmind-container";
       chatTools.parentNode.insertBefore(container, chatTools);
     }
 
-    // Generate HTML
+    buildAssistantHTML(container, analysis);
+
+    if (lastMsgEl && customerText) {
+      const userName = chatroom.querySelector(".action.profile")?.innerText || "Customer";
+      const userId = window.location.hash.split("/")[1] || "unknown";
+      saveChatLog({
+        userId: userId,
+        userName: userName,
+        customerText: customerText,
+        hasAttachment: hasAttachment,
+        detectedCategory: analysis.category,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  // --- 6. COMMON UI BUILDER ---
+  function buildAssistantHTML(container, analysis) {
     let html = `
       <div class="cm-header">
         <div class="cm-title">
@@ -204,7 +299,6 @@
     html += `</div>`;
     container.innerHTML = html;
 
-    // Attach event listeners to suggestion buttons
     container.querySelectorAll(".cm-actions-row .cm-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -216,7 +310,6 @@
       });
     });
 
-    // Attach drawer button
     const drawerBtn = container.querySelector("#cm-open-drawer-btn");
     if (drawerBtn) {
       drawerBtn.addEventListener("click", (e) => {
@@ -224,23 +317,9 @@
         openTemplateDrawer();
       });
     }
-
-    // Log chat to local DB
-    if (lastMsgEl && customerText) {
-      const userName = chatroom.querySelector(".action.profile")?.innerText || "Customer";
-      const userId = window.location.hash.split("/")[1] || "unknown";
-      saveChatLog({
-        userId: userId,
-        userName: userName,
-        customerText: customerText,
-        hasAttachment: hasAttachment,
-        detectedCategory: analysis.category,
-        timestamp: new Date().toISOString()
-      });
-    }
   }
 
-  // --- 5. TEMPLATES SEARCH MODAL DRAWER ---
+  // --- 7. TEMPLATES SEARCH MODAL DRAWER ---
   function createDrawerModal() {
     if (document.getElementById("cm-drawer-modal")) return;
 
@@ -335,7 +414,7 @@
     setTimeout(() => input.focus(), 100);
   }
 
-  // --- 6. FLOATING STATUS & EXPORT BUTTON ---
+  // --- 8. FLOATING STATUS & EXPORT BUTTON ---
   function createStatusBar() {
     if (document.getElementById("cm-status-bar")) return;
 
@@ -371,15 +450,16 @@
     if (countEl) countEl.innerText = history.length;
   }
 
-  // --- 7. OBSERVER LOOP ---
+  // --- 9. OBSERVER LOOP ---
   initDB().then(() => {
     createStatusBar();
     updateStatusBadge();
 
-    // Check periodically for DOM changes in Backbone chatroom
     setInterval(() => {
-      if (window.location.hash.startsWith("#chatroom")) {
-        renderAssistantUI();
+      if (isTelegram) {
+        renderTelegramAssistantUI();
+      } else if (window.location.hash.startsWith("#chatroom")) {
+        renderCasinoAssistantUI();
       }
     }, 400);
   });

@@ -1,6 +1,6 @@
 /* ChatMind In-Page Assistant CSS */
 #chatmind-container {
-  margin-bottom: 8px;
+  margin: 6px 8px;
   background: #1e222d;
   border: 1px solid #374151;
   border-radius: 8px;
@@ -11,6 +11,7 @@
   position: relative;
   z-index: 1000;
   animation: cmFadeIn 0.2s ease-out;
+  box-sizing: border-box;
 }
 
 @keyframes cmFadeIn {
@@ -236,8 +237,8 @@
 /* Floating Status Widget */
 #cm-status-bar {
   position: fixed;
-  bottom: 8px;
-  right: 12px;
+  bottom: 10px;
+  right: 14px;
   background: #111827;
   color: #9ca3af;
   border: 1px solid #374151;

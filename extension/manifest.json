@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ChatMind - Live Chat 1-Click Smart Assist",
-  "version": "1.0.1",
-  "description": "Smart reply assistant and automated chat history backup for live chat support backends.",
+  "version": "1.1.0",
+  "description": "Smart reply assistant and automated chat history backup for live chat and Telegram Web.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -15,6 +15,7 @@
   "host_permissions": [
     "*://*.as6868.com/*",
     "*://skgaming21.as6868.com/*",
+    "*://web.telegram.org/*",
     "*://*/*"
   ],
   "action": {
@@ -30,6 +31,7 @@
     {
       "matches": [
         "*://*.as6868.com/*",
+        "*://web.telegram.org/*",
         "*://*/*#chat*"
       ],
       "css": [
