@@ -351,3 +351,39 @@
   opacity: 1 !important;
   top: 35px !important;
 }
+
+
+/* Chatlist View Dedicated Quick Reply Toolbar */
+#cm-chatlist-toolbar {
+  background: #111827 !important;
+  border-bottom: 2px solid #2563eb !important;
+  border-top: 1px solid #374151 !important;
+  padding: 8px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  z-index: 99999 !important;
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  width: 100% !important;
+}
+
+.cm-tb-title {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #60a5fa !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.cm-tb-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  align-items: center !important;
+}

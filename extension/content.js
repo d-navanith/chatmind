@@ -4,8 +4,9 @@
 // 2. Telegram Web (web.telegram.org)
 
 (function () {
-  const isTelegram = window.location.hostname.includes("telegram.org");
-  console.log(`%c[ChatMind] Running on ${window.location.href}`, "background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold;");
+  console.log("%c[ChatMind] Running on " + window.location.href, "background: #2563eb; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 13px;");
+
+  const isTelegram = (window.location && window.location.hostname) ? window.location.hostname.includes("telegram.org") : false;
 
   // --- 1. LOCAL DATABASE (IndexedDB) FOR CHAT HISTORY BACKUP ---
   const DB_NAME = "ChatMindDB";
@@ -15,6 +16,7 @@
 
   function initDB() {
     try {
+      if (!window.indexedDB) return;
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -29,9 +31,8 @@
         dbInstance = e.target.result;
         updateStatusBadge();
       };
-      request.onerror = (e) => console.warn("[ChatMind] IndexedDB unavailable:", e);
     } catch (e) {
-      console.warn("[ChatMind] Error initializing IndexedDB:", e);
+      console.warn("[ChatMind] IndexedDB warning:", e);
     }
   }
 
@@ -44,9 +45,7 @@
       record.savedAt = new Date().toISOString();
       store.add(record);
       updateStatusBadge();
-    } catch (e) {
-      console.warn("[ChatMind] Error saving chat log:", e);
-    }
+    } catch (e) {}
   }
 
   function getChatHistory() {
@@ -115,7 +114,7 @@
   function insertTemplateText(text) {
     let inserted = false;
 
-    // 1. Telegram Web input (contenteditable div)
+    // A. Telegram Web input (contenteditable div)
     if (isTelegram) {
       const tgInput = document.querySelector(
         '#editable-message-text, .input-message-input, div.input-field-input[contenteditable="true"], div[contenteditable="true"]'
@@ -137,7 +136,7 @@
       }
     }
 
-    // 2. Casino / Standard Textarea (on #chatroom or anywhere)
+    // B. Casino / Standard Textarea (on #chatroom or anywhere)
     if (!inserted) {
       const textarea = document.querySelector("#chatroom textarea, .chat-tools textarea, textarea");
       if (textarea && textarea.offsetParent !== null) {
@@ -160,7 +159,7 @@
       }
     } else {
       navigator.clipboard.writeText(text).then(() => {
-        showToast("📋 Copied to clipboard! Click chat box and press Ctrl+V to paste.");
+        showToast("📋 Copied to clipboard! Ready to paste (Ctrl+V)");
       }).catch(() => {
         prompt("Copy this response:", text);
       });
@@ -181,7 +180,53 @@
     }, 2800);
   }
 
-  // --- 4. IN-ROOM ASSISTANT BAR (Above Textarea in #chatroom or Telegram) ---
+  // --- 4. PERMANENT ON-SCREEN TOOLBAR ON #chatlist ---
+  function renderChatlistToolbar() {
+    const isChatlist = window.location.hash.includes("chatlist") || !!document.querySelector(".pin-types") || !!document.getElementById("chatlist");
+    if (!isChatlist) return;
+
+    if (document.getElementById("cm-chatlist-toolbar")) return;
+
+    const pinTypes = document.querySelector(".pin-types");
+    const chatlist = document.getElementById("chatlist") || document.querySelector(".chatlist") || document.querySelector("#content-chatlist");
+
+    const toolbar = document.createElement("div");
+    toolbar.id = "cm-chatlist-toolbar";
+    toolbar.innerHTML = `
+      <div class="cm-tb-title">⚡ ChatMind Quick Replies:</div>
+      <div class="cm-tb-actions">
+        <button type="button" class="cm-btn cm-btn-slip" data-txt="Dear, please resubmit your deposit request on our website, and we will assist you accordingly. Thank you.">📸 RCV (Resubmit)</button>
+        <button type="button" class="cm-btn cm-btn-slip" data-txt="Dear, we have not received your funds yet, so kindly allow some time while our Finance Team reviews the transaction. Once the funds are confirmed as received, we will proceed with the necessary processing. Thank you for your patience and understanding.">📸 NO RCV</button>
+        <button type="button" class="cm-btn" data-txt="Dear, we confirm that your payment has been successfully released. Please note that bank processing may take up to 72 hours for the funds to reflect in your account. We appreciate your patience">⏳ Withdraw 72h</button>
+        <button type="button" class="cm-btn" data-txt="Dear, if you would like to apply for the 3+1 Bonus, kindly complete 3 consecutive deposits in a row without claiming any other bonus in between. Thank you Dear.">🎁 3+1 Streak</button>
+        <button type="button" class="cm-btn" data-txt="Dear, please use this PayID for your deposit. Kindly do not save our bank details, as they may change from time to time. Thank you.">💳 PayID Notice</button>
+        <button type="button" class="cm-btn" data-txt="Dear, please disconnect any VPN, log out of your game or account, and restart your mobile device. Then connect using a stable Wi-Fi connection or your normal mobile data, without reconnecting to the VPN. Once connected normally, log back into the game. Thank you for your cooperation.">🛡️ Turn off VPN</button>
+        <button type="button" class="cm-btn" data-txt="Dear partners, 918kiss download again if cannot login. New download Link : tm.d.918kiss.com">🎮 918Kiss Link</button>
+        <button type="button" class="cm-btn" data-txt="Dear, if unable to login to MEGA888 on iOS, please uninstall previous app and reinstall with below link: https://m.mega777.cc/mega/index-b.html">🍏 Mega888 (iOS)</button>
+        <button type="button" class="cm-btn cm-btn-drawer" id="cm-tb-all-btn">🔍 All Templates</button>
+      </div>
+    `;
+
+    if (pinTypes && pinTypes.parentNode) {
+      pinTypes.parentNode.insertBefore(toolbar, pinTypes.nextSibling);
+    } else if (chatlist) {
+      chatlist.insertBefore(toolbar, chatlist.firstChild);
+    } else if (document.body) {
+      document.body.prepend(toolbar);
+    }
+
+    toolbar.querySelectorAll(".cm-tb-actions .cm-btn[data-txt]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        insertTemplateText(btn.getAttribute("data-txt"));
+      });
+    });
+
+    toolbar.querySelector("#cm-tb-all-btn")?.addEventListener("click", () => {
+      openTemplateDrawer();
+    });
+  }
+
+  // --- 5. IN-ROOM ASSISTANT BAR (Above Textarea in #chatroom or Telegram) ---
   let lastProcessedFingerprint = null;
 
   function renderInRoomAssistant() {
@@ -203,7 +248,6 @@
         hasAttachment = lastMsgEl.querySelector('img, .media-photo, .media-container, .Album') !== null;
       }
     } else {
-      // Find chat textarea or composer in casino backends
       const textarea = document.querySelector("#chatroom textarea, .chat-tools textarea, textarea");
       if (textarea && textarea.offsetParent !== null) {
         composerContainer = textarea.closest(".chat-tools") || textarea.parentElement;
@@ -289,8 +333,9 @@
     }
   }
 
-  // --- 5. PERMANENT FLOATING ASSISTANT SIDEBAR (Visible everywhere on screen!) ---
+  // --- 6. FLOATING ASSISTANT SIDEBAR (Right edge of screen) ---
   function createFloatingSidebar() {
+    if (!document.body) return;
     if (document.getElementById("cm-sidebar-dock")) return;
 
     const dock = document.createElement("div");
@@ -386,8 +431,9 @@
     });
   }
 
-  // --- 6. TEMPLATES SEARCH MODAL DRAWER ---
+  // --- 7. TEMPLATES SEARCH MODAL DRAWER ---
   function createDrawerModal() {
+    if (!document.body) return;
     if (document.getElementById("cm-drawer-modal")) return;
 
     const modal = document.createElement("div");
@@ -480,8 +526,9 @@
     setTimeout(() => input.focus(), 100);
   }
 
-  // --- 7. FLOATING STATUS & EXPORT BUTTON ---
+  // --- 8. FLOATING STATUS & EXPORT BUTTON ---
   function createStatusBar() {
+    if (!document.body) return;
     if (document.getElementById("cm-status-bar")) return;
 
     const bar = document.createElement("div");
@@ -516,17 +563,20 @@
     if (countEl) countEl.innerText = history.length;
   }
 
-  // --- 8. IMMEDIATE UI INJECTION (Does NOT wait for DB) ---
+  // --- 9. STARTUP & CONTINUOUS RESILIENCE ---
+  function ensureUI() {
+    if (!document.body) return;
+    try { createStatusBar(); } catch (e) {}
+    try { createFloatingSidebar(); } catch (e) {}
+    try { renderChatlistToolbar(); } catch (e) {}
+    try { renderInRoomAssistant(); } catch (e) {}
+  }
+
   function bootChatMind() {
-    createStatusBar();
-    createFloatingSidebar();
     initDB();
-
-    setInterval(() => {
-      renderInRoomAssistant();
-    }, 400);
-
-    console.log("⚡ [ChatMind] UI Injected Successfully!");
+    ensureUI();
+    setInterval(ensureUI, 400);
+    console.log("⚡ [ChatMind] Universal Live Chat Assist is ACTIVE!");
   }
 
   if (document.readyState === "loading") {
