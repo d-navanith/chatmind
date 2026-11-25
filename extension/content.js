@@ -1,13 +1,11 @@
 // ChatMind Universal Live Chat & Agent-Assist Extension
-// Works on:
-// 1. Casino / Gaming backends (skgaming21, as6868.com, all brand portals)
-//    - Works on #chatlist, #chatroom, and all sub-pages!
+// Compatible with:
+// 1. Casino / Gaming backends (skgaming21, as6868.com, and all brand portals)
 // 2. Telegram Web (web.telegram.org)
 
 (function () {
   const isTelegram = window.location.hostname.includes("telegram.org");
-  const isCasinoPortal = window.location.hostname.includes("as6868.com") || window.location.hash.includes("chat");
-  console.log(`[ChatMind] Active on ${window.location.hostname} (Telegram: ${isTelegram}, Casino: ${isCasinoPortal})`);
+  console.log(`%c[ChatMind] Running on ${window.location.href}`, "background: #2563eb; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold;");
 
   // --- 1. LOCAL DATABASE (IndexedDB) FOR CHAT HISTORY BACKUP ---
   const DB_NAME = "ChatMindDB";
@@ -16,7 +14,7 @@
   let dbInstance = null;
 
   function initDB() {
-    return new Promise((resolve, reject) => {
+    try {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -29,10 +27,12 @@
       };
       request.onsuccess = (e) => {
         dbInstance = e.target.result;
-        resolve(dbInstance);
+        updateStatusBadge();
       };
-      request.onerror = (e) => reject(e);
-    });
+      request.onerror = (e) => console.warn("[ChatMind] IndexedDB unavailable:", e);
+    } catch (e) {
+      console.warn("[ChatMind] Error initializing IndexedDB:", e);
+    }
   }
 
   function saveChatLog(record) {
@@ -52,11 +52,15 @@
   function getChatHistory() {
     return new Promise((resolve) => {
       if (!dbInstance) return resolve([]);
-      const tx = dbInstance.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => resolve([]);
+      try {
+        const tx = dbInstance.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      } catch (e) {
+        resolve([]);
+      }
     });
   }
 
@@ -68,14 +72,14 @@
 
     if (hasAttachment) {
       detectedCategory = "Receipt / Attachment";
-      const receiptCat = window.CHATMIND_KB.categories.find(c => c.id === "deposit_receipt");
+      const receiptCat = window.CHATMIND_KB?.categories.find(c => c.id === "deposit_receipt");
       if (receiptCat) {
         matches = receiptCat.templates.slice(0, 5);
       }
       return { category: detectedCategory, hasAttachment: true, suggestions: matches };
     }
 
-    if (textLower.length > 0) {
+    if (textLower.length > 0 && window.CHATMIND_KB) {
       for (const cat of window.CHATMIND_KB.categories) {
         let catScore = 0;
         for (const trig of cat.triggers) {
@@ -91,7 +95,7 @@
       }
     }
 
-    if (matches.length === 0) {
+    if (matches.length === 0 && window.CHATMIND_KB) {
       detectedCategory = "General Support";
       const etiquetteCat = window.CHATMIND_KB.categories.find(c => c.id === "etiquette");
       const receiptCat = window.CHATMIND_KB.categories.find(c => c.id === "deposit_receipt");
@@ -133,10 +137,10 @@
       }
     }
 
-    // 2. Casino / Standard Textarea (on #chatroom or #chatlist)
+    // 2. Casino / Standard Textarea (on #chatroom or anywhere)
     if (!inserted) {
       const textarea = document.querySelector("#chatroom textarea, .chat-tools textarea, textarea");
-      if (textarea && textarea.offsetParent !== null) { // visible
+      if (textarea && textarea.offsetParent !== null) {
         textarea.value = text;
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
         textarea.dispatchEvent(new Event("change", { bubbles: true }));
@@ -147,7 +151,6 @@
       }
     }
 
-    // 3. If inserted into a box, provide visual feedback
     if (inserted) {
       showToast("✅ Response inserted into chat box! Press Enter to send.");
       const container = document.getElementById("chatmind-container");
@@ -156,9 +159,8 @@
         setTimeout(() => { container.style.borderColor = "#374151"; }, 800);
       }
     } else {
-      // 4. If no chat box is open (e.g. agent is on #chatlist), copy to clipboard!
       navigator.clipboard.writeText(text).then(() => {
-        showToast("📋 Copied to clipboard! Click on a chat and press Ctrl+V to paste.");
+        showToast("📋 Copied to clipboard! Click chat box and press Ctrl+V to paste.");
       }).catch(() => {
         prompt("Copy this response:", text);
       });
@@ -183,7 +185,6 @@
   let lastProcessedFingerprint = null;
 
   function renderInRoomAssistant() {
-    // Find target input container
     let composerContainer = null;
     let customerText = "";
     let hasAttachment = false;
@@ -202,9 +203,8 @@
         hasAttachment = lastMsgEl.querySelector('img, .media-photo, .media-container, .Album') !== null;
       }
     } else {
-      // Casino Portal: check for #chatroom or any .chat-tools / textarea
-      const chatroom = document.getElementById("chatroom") || document.querySelector(".chat-tools")?.closest("div");
-      const textarea = document.querySelector("#chatroom textarea, .chat-tools textarea");
+      // Find chat textarea or composer in casino backends
+      const textarea = document.querySelector("#chatroom textarea, .chat-tools textarea, textarea");
       if (textarea && textarea.offsetParent !== null) {
         composerContainer = textarea.closest(".chat-tools") || textarea.parentElement;
       }
@@ -276,7 +276,6 @@
       openTemplateDrawer();
     });
 
-    // Save chat log
     if (customerText) {
       const userName = document.querySelector(".action.profile, .chat-info .title, .peer-title")?.innerText || "Customer";
       saveChatLog({
@@ -290,7 +289,7 @@
     }
   }
 
-  // --- 5. PERMANENT FLOATING ASSISTANT SIDEBAR (Visible on #chatlist and everywhere!) ---
+  // --- 5. PERMANENT FLOATING ASSISTANT SIDEBAR (Visible everywhere on screen!) ---
   function createFloatingSidebar() {
     if (document.getElementById("cm-sidebar-dock")) return;
 
@@ -306,7 +305,7 @@
           <div style="font-weight:700;color:#60a5fa;display:flex;align-items:center;gap:6px;">
             <span>⚡ ChatMind Quick Assist</span>
           </div>
-          <button type="button" id="cm-sidebar-close" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;">✕</button>
+          <button type="button" id="cm-sidebar-close" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:16px;">✕</button>
         </div>
         <div class="cm-sidebar-search">
           <input type="text" id="cm-sidebar-input" placeholder="Search template (e.g. withdraw, streak, rcv)...">
@@ -321,7 +320,8 @@
     const closeBtn = document.getElementById("cm-sidebar-close");
     const searchInput = document.getElementById("cm-sidebar-input");
 
-    toggle.addEventListener("click", () => {
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
       panel.classList.toggle("cm-panel-open");
       if (panel.classList.contains("cm-panel-open")) {
         renderSidebarList("");
@@ -329,7 +329,8 @@
       }
     });
 
-    closeBtn.addEventListener("click", () => {
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       panel.classList.remove("cm-panel-open");
     });
 
@@ -340,7 +341,7 @@
 
   function renderSidebarList(filter = "") {
     const listEl = document.getElementById("cm-sidebar-list");
-    if (!listEl) return;
+    if (!listEl || !window.CHATMIND_KB) return;
     const query = filter.toLowerCase().trim();
     let html = "";
 
@@ -423,7 +424,7 @@
 
   function renderDrawerList(filter = "") {
     const listEl = document.getElementById("cm-drawer-list");
-    if (!listEl) return;
+    if (!listEl || !window.CHATMIND_KB) return;
     const query = filter.toLowerCase().trim();
     let html = "";
 
@@ -515,16 +516,23 @@
     if (countEl) countEl.innerText = history.length;
   }
 
-  // --- 8. OBSERVER INITIALIZATION ---
-  initDB().then(() => {
+  // --- 8. IMMEDIATE UI INJECTION (Does NOT wait for DB) ---
+  function bootChatMind() {
     createStatusBar();
     createFloatingSidebar();
-    updateStatusBadge();
+    initDB();
 
-    // Continuously observe DOM for active chats & textareas
     setInterval(() => {
       renderInRoomAssistant();
     }, 400);
-  });
+
+    console.log("⚡ [ChatMind] UI Injected Successfully!");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootChatMind);
+  } else {
+    bootChatMind();
+  }
 
 })();
