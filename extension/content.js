@@ -1,11 +1,13 @@
-// ChatMind Smart Reply & Auto-History Logger
-// Compatible with:
-// 1. Casino / Gaming backends (skgaming21, as6868.com, etc.)
-// 2. Telegram Web (web.telegram.org/a/ and web.telegram.org/k/)
+// ChatMind Universal Live Chat & Agent-Assist Extension
+// Works on:
+// 1. Casino / Gaming backends (skgaming21, as6868.com, all brand portals)
+//    - Works on #chatlist, #chatroom, and all sub-pages!
+// 2. Telegram Web (web.telegram.org)
 
 (function () {
   const isTelegram = window.location.hostname.includes("telegram.org");
-  console.log(`[ChatMind] Smart Assist initialized on ${isTelegram ? 'Telegram Web' : window.location.hostname}.`);
+  const isCasinoPortal = window.location.hostname.includes("as6868.com") || window.location.hash.includes("chat");
+  console.log(`[ChatMind] Active on ${window.location.hostname} (Telegram: ${isTelegram}, Casino: ${isCasinoPortal})`);
 
   // --- 1. LOCAL DATABASE (IndexedDB) FOR CHAT HISTORY BACKUP ---
   const DB_NAME = "ChatMindDB";
@@ -64,7 +66,6 @@
     let matches = [];
     let detectedCategory = null;
 
-    // A. If an image or slip attachment is detected
     if (hasAttachment) {
       detectedCategory = "Receipt / Attachment";
       const receiptCat = window.CHATMIND_KB.categories.find(c => c.id === "deposit_receipt");
@@ -74,7 +75,6 @@
       return { category: detectedCategory, hasAttachment: true, suggestions: matches };
     }
 
-    // B. Keyword & Phrase matching against Knowledge Base
     if (textLower.length > 0) {
       for (const cat of window.CHATMIND_KB.categories) {
         let catScore = 0;
@@ -91,193 +91,156 @@
       }
     }
 
-    // C. Default fallback if no specific keywords triggered
     if (matches.length === 0) {
       detectedCategory = "General Support";
       const etiquetteCat = window.CHATMIND_KB.categories.find(c => c.id === "etiquette");
       const receiptCat = window.CHATMIND_KB.categories.find(c => c.id === "deposit_receipt");
       const withdrawCat = window.CHATMIND_KB.categories.find(c => c.id === "withdrawal");
       matches = [
-        etiquetteCat.templates[0], // Hold Customer
-        etiquetteCat.templates[1], // Clarify Issue
         receiptCat.templates[0],   // RCV
-        withdrawCat.templates[0]   // 72h Withdraw Notice
+        receiptCat.templates[1],   // NO RCV
+        withdrawCat.templates[0],  // 72h Withdraw Notice
+        etiquetteCat.templates[0]  // Hold Customer
       ];
     }
 
     return { category: detectedCategory, hasAttachment: false, suggestions: matches };
   }
 
-  // --- 3. UNIVERSAL 1-CLICK TYPING (Supports contenteditable & textarea) ---
+  // --- 3. UNIVERSAL 1-CLICK TYPING & CLIPBOARD FALLBACK ---
   function insertTemplateText(text) {
-    // 1. Try Telegram Web input (contenteditable div)
+    let inserted = false;
+
+    // 1. Telegram Web input (contenteditable div)
     if (isTelegram) {
       const tgInput = document.querySelector(
         '#editable-message-text, .input-message-input, div.input-field-input[contenteditable="true"], div[contenteditable="true"]'
       );
       if (tgInput) {
         tgInput.focus();
-        // Select all text in contenteditable
         const selection = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(tgInput);
         selection.removeAllRanges();
         selection.addRange(range);
 
-        // Execute insertText command so Telegram's internal draft state triggers
         if (!document.execCommand("insertText", false, text)) {
           tgInput.innerText = text;
         }
-
         tgInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
         tgInput.dispatchEvent(new Event("change", { bubbles: true }));
-        highlightFeedback();
-        return;
+        inserted = true;
       }
     }
 
-    // 2. Try Casino / Standard Textarea
-    const textarea = document.querySelector("#chatroom textarea, textarea");
-    if (textarea) {
-      textarea.value = text;
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      textarea.dispatchEvent(new Event("change", { bubbles: true }));
-      textarea.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Shift" }));
-      textarea.focus();
-      textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
-      highlightFeedback();
-      return;
+    // 2. Casino / Standard Textarea (on #chatroom or #chatlist)
+    if (!inserted) {
+      const textarea = document.querySelector("#chatroom textarea, .chat-tools textarea, textarea");
+      if (textarea && textarea.offsetParent !== null) { // visible
+        textarea.value = text;
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.dispatchEvent(new Event("change", { bubbles: true }));
+        textarea.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Shift" }));
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+        inserted = true;
+      }
     }
 
-    alert("Chat input box not found!");
-  }
-
-  function highlightFeedback() {
-    const container = document.getElementById("chatmind-container");
-    if (container) {
-      container.style.borderColor = "#10b981";
-      setTimeout(() => { container.style.borderColor = "#374151"; }, 800);
+    // 3. If inserted into a box, provide visual feedback
+    if (inserted) {
+      showToast("✅ Response inserted into chat box! Press Enter to send.");
+      const container = document.getElementById("chatmind-container");
+      if (container) {
+        container.style.borderColor = "#10b981";
+        setTimeout(() => { container.style.borderColor = "#374151"; }, 800);
+      }
+    } else {
+      // 4. If no chat box is open (e.g. agent is on #chatlist), copy to clipboard!
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("📋 Copied to clipboard! Click on a chat and press Ctrl+V to paste.");
+      }).catch(() => {
+        prompt("Copy this response:", text);
+      });
     }
   }
 
-  // --- 4. TELEGRAM WEB ASSISTANT RENDERER ---
-  let lastProcessedTgMsg = null;
+  function showToast(msg) {
+    let toast = document.getElementById("cm-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "cm-toast";
+      document.body.appendChild(toast);
+    }
+    toast.innerText = msg;
+    toast.className = "cm-toast-show";
+    setTimeout(() => {
+      toast.className = "";
+    }, 2800);
+  }
 
-  function renderTelegramAssistantUI() {
-    // Look for Telegram composer/footer container
-    const composer = document.querySelector(
-      '.middle-column-footer, .chat-input, .input-message-container, .composer-wrapper'
-    );
-    if (!composer) return;
+  // --- 4. IN-ROOM ASSISTANT BAR (Above Textarea in #chatroom or Telegram) ---
+  let lastProcessedFingerprint = null;
 
-    // Find incoming messages in the active chat
-    const incomingMessages = document.querySelectorAll(
-      '.Message.incoming, .bubble.is-in, .message-list-item .incoming, .message.is-in'
-    );
-    const lastMsgEl = incomingMessages.length > 0 ? incomingMessages[incomingMessages.length - 1] : null;
-
+  function renderInRoomAssistant() {
+    // Find target input container
+    let composerContainer = null;
     let customerText = "";
     let hasAttachment = false;
 
-    if (lastMsgEl) {
-      const textEl = lastMsgEl.querySelector('.text-content, .message, .translatable-message');
-      customerText = textEl ? textEl.innerText.trim() : lastMsgEl.innerText.trim();
-      hasAttachment = lastMsgEl.querySelector('img, .media-photo, .media-container, .Album') !== null;
+    if (isTelegram) {
+      composerContainer = document.querySelector(
+        '.middle-column-footer, .chat-input, .input-message-container, .composer-wrapper'
+      );
+      const incomingMessages = document.querySelectorAll(
+        '.Message.incoming, .bubble.is-in, .message-list-item .incoming, .message.is-in'
+      );
+      const lastMsgEl = incomingMessages.length > 0 ? incomingMessages[incomingMessages.length - 1] : null;
+      if (lastMsgEl) {
+        const textEl = lastMsgEl.querySelector('.text-content, .message, .translatable-message');
+        customerText = textEl ? textEl.innerText.trim() : lastMsgEl.innerText.trim();
+        hasAttachment = lastMsgEl.querySelector('img, .media-photo, .media-container, .Album') !== null;
+      }
+    } else {
+      // Casino Portal: check for #chatroom or any .chat-tools / textarea
+      const chatroom = document.getElementById("chatroom") || document.querySelector(".chat-tools")?.closest("div");
+      const textarea = document.querySelector("#chatroom textarea, .chat-tools textarea");
+      if (textarea && textarea.offsetParent !== null) {
+        composerContainer = textarea.closest(".chat-tools") || textarea.parentElement;
+      }
+      const messages = document.querySelectorAll("#chatroom .message.customer, .message.customer");
+      const lastMsgEl = messages.length > 0 ? messages[messages.length - 1] : null;
+      if (lastMsgEl) {
+        const textEl = lastMsgEl.querySelector(".text");
+        customerText = textEl ? textEl.innerText.trim() : "";
+        hasAttachment = lastMsgEl.querySelector("img") !== null || customerText.includes(".jpg") || customerText.includes(".png");
+      }
     }
 
-    const msgFingerprint = (lastMsgEl ? lastMsgEl.innerText.slice(0, 100) : "") + (hasAttachment ? "_att" : "");
+    if (!composerContainer) return;
+
+    const fingerprint = (customerText.slice(0, 100)) + (hasAttachment ? "_att" : "");
     let container = document.getElementById("chatmind-container");
 
-    if (container && lastProcessedTgMsg === msgFingerprint) {
-      return; // Already rendered for this message
+    if (container && lastProcessedFingerprint === fingerprint) {
+      return;
     }
-    lastProcessedTgMsg = msgFingerprint;
+    lastProcessedFingerprint = fingerprint;
 
     const analysis = analyzeInquiry(customerText, hasAttachment);
 
     if (!container) {
       container = document.createElement("div");
       container.id = "chatmind-container";
-      composer.parentNode.insertBefore(container, composer);
+      composerContainer.parentNode.insertBefore(container, composerContainer);
     }
 
-    buildAssistantHTML(container, analysis);
-
-    // Save to local database
-    if (lastMsgEl && customerText) {
-      const chatTitle = document.querySelector('.chat-info .title, .top .peer-title, .user-title')?.innerText || "Telegram Client";
-      saveChatLog({
-        userId: chatTitle,
-        userName: chatTitle,
-        customerText: customerText,
-        hasAttachment: hasAttachment,
-        detectedCategory: analysis.category,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-
-  // --- 5. CASINO BACKEND ASSISTANT RENDERER ---
-  let lastProcessedCasinoMsg = null;
-
-  function renderCasinoAssistantUI() {
-    const chatroom = document.getElementById("chatroom");
-    if (!chatroom) return;
-
-    let container = document.getElementById("chatmind-container");
-    const chatTools = chatroom.querySelector(".chat-tools") || chatroom.querySelector("textarea")?.parentElement;
-    if (!chatTools) return;
-
-    const messages = chatroom.querySelectorAll(".message.customer");
-    const lastMsgEl = messages.length > 0 ? messages[messages.length - 1] : null;
-
-    let customerText = "";
-    let hasAttachment = false;
-
-    if (lastMsgEl) {
-      const textEl = lastMsgEl.querySelector(".text");
-      customerText = textEl ? textEl.innerText.trim() : "";
-      hasAttachment = lastMsgEl.querySelector("img") !== null || customerText.includes(".jpg") || customerText.includes(".png");
-    }
-
-    const msgFingerprint = (lastMsgEl ? lastMsgEl.innerText : "") + (hasAttachment ? "_att" : "");
-    if (container && lastProcessedCasinoMsg === msgFingerprint) {
-      return;
-    }
-    lastProcessedCasinoMsg = msgFingerprint;
-
-    const analysis = analyzeInquiry(customerText, hasAttachment);
-
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "chatmind-container";
-      chatTools.parentNode.insertBefore(container, chatTools);
-    }
-
-    buildAssistantHTML(container, analysis);
-
-    if (lastMsgEl && customerText) {
-      const userName = chatroom.querySelector(".action.profile")?.innerText || "Customer";
-      const userId = window.location.hash.split("/")[1] || "unknown";
-      saveChatLog({
-        userId: userId,
-        userName: userName,
-        customerText: customerText,
-        hasAttachment: hasAttachment,
-        detectedCategory: analysis.category,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-
-  // --- 6. COMMON UI BUILDER ---
-  function buildAssistantHTML(container, analysis) {
     let html = `
       <div class="cm-header">
         <div class="cm-title">
           <span>⚡ Smart Reply</span>
           <span class="cm-pill ${analysis.hasAttachment ? 'cm-pill-attachment' : 'cm-pill-detected'}">
-            ${analysis.hasAttachment ? '📷 SLIP / ATTACHMENT DETECTED' : analysis.category}
+            ${analysis.hasAttachment ? '📷 SLIP / ATTACHMENT' : analysis.category}
           </span>
         </div>
         <button type="button" class="cm-btn cm-btn-drawer" id="cm-open-drawer-btn">
@@ -304,22 +267,125 @@
         e.preventDefault();
         const idx = parseInt(btn.getAttribute("data-idx"));
         const tmpl = analysis.suggestions[idx];
-        if (tmpl) {
-          insertTemplateText(tmpl.text);
-        }
+        if (tmpl) insertTemplateText(tmpl.text);
       });
     });
 
-    const drawerBtn = container.querySelector("#cm-open-drawer-btn");
-    if (drawerBtn) {
-      drawerBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        openTemplateDrawer();
+    container.querySelector("#cm-open-drawer-btn")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      openTemplateDrawer();
+    });
+
+    // Save chat log
+    if (customerText) {
+      const userName = document.querySelector(".action.profile, .chat-info .title, .peer-title")?.innerText || "Customer";
+      saveChatLog({
+        userId: userName,
+        userName: userName,
+        customerText: customerText,
+        hasAttachment: hasAttachment,
+        detectedCategory: analysis.category,
+        timestamp: new Date().toISOString()
       });
     }
   }
 
-  // --- 7. TEMPLATES SEARCH MODAL DRAWER ---
+  // --- 5. PERMANENT FLOATING ASSISTANT SIDEBAR (Visible on #chatlist and everywhere!) ---
+  function createFloatingSidebar() {
+    if (document.getElementById("cm-sidebar-dock")) return;
+
+    const dock = document.createElement("div");
+    dock.id = "cm-sidebar-dock";
+    dock.innerHTML = `
+      <div id="cm-sidebar-toggle" title="Click to open ChatMind 1-Click Templates">
+        <span style="font-size:16px;">⚡</span>
+        <span class="cm-toggle-text">ChatMind</span>
+      </div>
+      <div id="cm-sidebar-panel">
+        <div class="cm-sidebar-head">
+          <div style="font-weight:700;color:#60a5fa;display:flex;align-items:center;gap:6px;">
+            <span>⚡ ChatMind Quick Assist</span>
+          </div>
+          <button type="button" id="cm-sidebar-close" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;">✕</button>
+        </div>
+        <div class="cm-sidebar-search">
+          <input type="text" id="cm-sidebar-input" placeholder="Search template (e.g. withdraw, streak, rcv)...">
+        </div>
+        <div class="cm-sidebar-content" id="cm-sidebar-list"></div>
+      </div>
+    `;
+    document.body.appendChild(dock);
+
+    const toggle = document.getElementById("cm-sidebar-toggle");
+    const panel = document.getElementById("cm-sidebar-panel");
+    const closeBtn = document.getElementById("cm-sidebar-close");
+    const searchInput = document.getElementById("cm-sidebar-input");
+
+    toggle.addEventListener("click", () => {
+      panel.classList.toggle("cm-panel-open");
+      if (panel.classList.contains("cm-panel-open")) {
+        renderSidebarList("");
+        setTimeout(() => searchInput.focus(), 150);
+      }
+    });
+
+    closeBtn.addEventListener("click", () => {
+      panel.classList.remove("cm-panel-open");
+    });
+
+    searchInput.addEventListener("input", () => {
+      renderSidebarList(searchInput.value);
+    });
+  }
+
+  function renderSidebarList(filter = "") {
+    const listEl = document.getElementById("cm-sidebar-list");
+    if (!listEl) return;
+    const query = filter.toLowerCase().trim();
+    let html = "";
+
+    window.CHATMIND_KB.categories.forEach(cat => {
+      const matched = cat.templates.filter(t => {
+        if (!query) return true;
+        return t.label.toLowerCase().includes(query) ||
+               t.text.toLowerCase().includes(query) ||
+               t.tags.some(tag => tag.toLowerCase().includes(query));
+      });
+
+      if (matched.length > 0) {
+        html += `
+          <div class="cm-cat-group">
+            <div class="cm-cat-title">
+              <span>●</span> ${cat.name}
+            </div>
+        `;
+        matched.forEach(tmpl => {
+          html += `
+            <div class="cm-template-item" data-text="${encodeURIComponent(tmpl.text)}">
+              <div class="cm-template-label">${tmpl.label}</div>
+              <div class="cm-template-preview">${tmpl.text}</div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+    });
+
+    if (!html) {
+      html = `<div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px;">No matching templates found.</div>`;
+    }
+
+    listEl.innerHTML = html;
+
+    listEl.querySelectorAll(".cm-template-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const text = decodeURIComponent(item.getAttribute("data-text"));
+        insertTemplateText(text);
+      });
+    });
+  }
+
+  // --- 6. TEMPLATES SEARCH MODAL DRAWER ---
   function createDrawerModal() {
     if (document.getElementById("cm-drawer-modal")) return;
 
@@ -358,7 +424,6 @@
   function renderDrawerList(filter = "") {
     const listEl = document.getElementById("cm-drawer-list");
     if (!listEl) return;
-
     const query = filter.toLowerCase().trim();
     let html = "";
 
@@ -414,7 +479,7 @@
     setTimeout(() => input.focus(), 100);
   }
 
-  // --- 8. FLOATING STATUS & EXPORT BUTTON ---
+  // --- 7. FLOATING STATUS & EXPORT BUTTON ---
   function createStatusBar() {
     if (document.getElementById("cm-status-bar")) return;
 
@@ -450,17 +515,15 @@
     if (countEl) countEl.innerText = history.length;
   }
 
-  // --- 9. OBSERVER LOOP ---
+  // --- 8. OBSERVER INITIALIZATION ---
   initDB().then(() => {
     createStatusBar();
+    createFloatingSidebar();
     updateStatusBadge();
 
+    // Continuously observe DOM for active chats & textareas
     setInterval(() => {
-      if (isTelegram) {
-        renderTelegramAssistantUI();
-      } else if (window.location.hash.startsWith("#chatroom")) {
-        renderCasinoAssistantUI();
-      }
+      renderInRoomAssistant();
     }, 400);
   });
 
