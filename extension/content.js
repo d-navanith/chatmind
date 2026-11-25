@@ -193,7 +193,10 @@
     const toolbar = document.createElement("div");
     toolbar.id = "cm-chatlist-toolbar";
     toolbar.innerHTML = `
-      <div class="cm-tb-title">⚡ ChatMind Quick Replies:</div>
+      <div class="cm-tb-header">
+        <div class="cm-tb-title">⚡ ChatMind Quick Replies:</div>
+        <button type="button" class="cm-btn" id="cm-tb-toggle-btn" style="padding:2px 8px;font-size:10px;background:#1f2937;">▲ Minimize</button>
+      </div>
       <div class="cm-tb-actions">
         <button type="button" class="cm-btn cm-btn-slip" data-txt="Dear, please resubmit your deposit request on our website, and we will assist you accordingly. Thank you.">📸 RCV (Resubmit)</button>
         <button type="button" class="cm-btn cm-btn-slip" data-txt="Dear, we have not received your funds yet, so kindly allow some time while our Finance Team reviews the transaction. Once the funds are confirmed as received, we will proceed with the necessary processing. Thank you for your patience and understanding.">📸 NO RCV</button>
@@ -214,6 +217,12 @@
     } else if (document.body) {
       document.body.prepend(toolbar);
     }
+
+    const toggleBtn = toolbar.querySelector("#cm-tb-toggle-btn");
+    toggleBtn?.addEventListener("click", () => {
+      toolbar.classList.toggle("cm-collapsed");
+      toggleBtn.innerText = toolbar.classList.contains("cm-collapsed") ? "▼ Quick Replies" : "▲ Minimize";
+    });
 
     toolbar.querySelectorAll(".cm-tb-actions .cm-btn[data-txt]").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -334,14 +343,20 @@
   }
 
   // --- 6. FLOATING ASSISTANT SIDEBAR (Right edge of screen) ---
+  let activeSidebarCategory = "all";
+
   function createFloatingSidebar() {
     if (!document.body) return;
     if (document.getElementById("cm-sidebar-dock")) return;
 
     const dock = document.createElement("div");
     dock.id = "cm-sidebar-dock";
+
+    const savedTop = localStorage.getItem("CHATMIND_DOCK_TOP");
+    if (savedTop) dock.style.top = savedTop;
+
     dock.innerHTML = `
-      <div id="cm-sidebar-toggle" title="Click to open ChatMind 1-Click Templates">
+      <div id="cm-sidebar-toggle" title="Click to open or drag to reposition">
         <span style="font-size:16px;">⚡</span>
         <span class="cm-toggle-text">ChatMind</span>
       </div>
@@ -351,6 +366,15 @@
             <span>⚡ ChatMind Quick Assist</span>
           </div>
           <button type="button" id="cm-sidebar-close" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:16px;">✕</button>
+        </div>
+        <div class="cm-sidebar-filters">
+          <span class="cm-filter-pill active" data-cat="all">All</span>
+          <span class="cm-filter-pill" data-cat="deposit_receipt">📸 Slips</span>
+          <span class="cm-filter-pill" data-cat="payid">💳 PayID</span>
+          <span class="cm-filter-pill" data-cat="withdrawal">⏳ Withdraw</span>
+          <span class="cm-filter-pill" data-cat="bonus_streak">🎁 3+1 Bonus</span>
+          <span class="cm-filter-pill" data-cat="vpn_tech">🛡️ VPN</span>
+          <span class="cm-filter-pill" data-cat="game_maintenance">🎮 Links</span>
         </div>
         <div class="cm-sidebar-search">
           <input type="text" id="cm-sidebar-input" placeholder="Search template (e.g. withdraw, streak, rcv)...">
@@ -365,8 +389,41 @@
     const closeBtn = document.getElementById("cm-sidebar-close");
     const searchInput = document.getElementById("cm-sidebar-input");
 
+    // Draggable toggle button along right edge
+    let isDragging = false;
+    let startY = 0;
+    let startTop = 0;
+    let hasMoved = false;
+
+    toggle.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      hasMoved = false;
+      startY = e.clientY;
+      startTop = dock.offsetTop;
+      document.body.style.userSelect = "none";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      const dy = e.clientY - startY;
+      if (Math.abs(dy) > 4) {
+        hasMoved = true;
+        const newTop = Math.max(20, Math.min(window.innerHeight - 80, startTop + dy));
+        dock.style.top = newTop + "px";
+        localStorage.setItem("CHATMIND_DOCK_TOP", newTop + "px");
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.userSelect = "";
+      }
+    });
+
     toggle.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (hasMoved) return; // ignore click if dragged
       panel.classList.toggle("cm-panel-open");
       if (panel.classList.contains("cm-panel-open")) {
         renderSidebarList("");
@@ -382,6 +439,15 @@
     searchInput.addEventListener("input", () => {
       renderSidebarList(searchInput.value);
     });
+
+    panel.querySelectorAll(".cm-filter-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        panel.querySelectorAll(".cm-filter-pill").forEach(p => p.classList.remove("active"));
+        pill.classList.add("active");
+        activeSidebarCategory = pill.getAttribute("data-cat");
+        renderSidebarList(searchInput.value);
+      });
+    });
   }
 
   function renderSidebarList(filter = "") {
@@ -391,6 +457,10 @@
     let html = "";
 
     window.CHATMIND_KB.categories.forEach(cat => {
+      if (activeSidebarCategory !== "all" && cat.id !== activeSidebarCategory) {
+        return;
+      }
+
       const matched = cat.templates.filter(t => {
         if (!query) return true;
         return t.label.toLowerCase().includes(query) ||
@@ -402,7 +472,7 @@
         html += `
           <div class="cm-cat-group">
             <div class="cm-cat-title">
-              <span>●</span> ${cat.name}
+              <span>●</span> ${cat.name} (${matched.length})
             </div>
         `;
         matched.forEach(tmpl => {
@@ -418,13 +488,15 @@
     });
 
     if (!html) {
-      html = `<div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px;">No matching templates found.</div>`;
+      html = `<div style="text-align:center;padding:24px;color:#9ca3af;font-size:12px;">No matching templates found.</div>`;
     }
 
     listEl.innerHTML = html;
 
     listEl.querySelectorAll(".cm-template-item").forEach(item => {
       item.addEventListener("click", () => {
+        item.classList.add("cm-copied");
+        setTimeout(() => item.classList.remove("cm-copied"), 600);
         const text = decodeURIComponent(item.getAttribute("data-text"));
         insertTemplateText(text);
       });

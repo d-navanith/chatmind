@@ -387,3 +387,50 @@
   gap: 6px !important;
   align-items: center !important;
 }
+
+/* Sidebar Quick Filter Category Pills */
+.cm-sidebar-filters {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+  padding: 8px 14px !important;
+  border-bottom: 1px solid #2d3748 !important;
+  background: #151b26 !important;
+}
+
+.cm-filter-pill {
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  background: #1f2937 !important;
+  color: #9ca3af !important;
+  border: 1px solid #374151 !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+
+.cm-filter-pill:hover,
+.cm-filter-pill.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+
+.cm-template-item.cm-copied {
+  border-color: #10b981 !important;
+  background: #064e3b !important;
+}
+
+/* Chatlist Toolbar Collapse Support */
+#cm-chatlist-toolbar.cm-collapsed .cm-tb-actions {
+  display: none !important;
+}
+
+.cm-tb-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
